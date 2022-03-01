@@ -64,17 +64,30 @@ export async function arweaveUpload(
   index,
 ) {
   const imageExt = path.extname(image);
+  console.log(`DEBUG: in arweave upload, imageExt: ${imageExt}`);
   const fsStat = await stat(image);
+
+  //TODO CCDLE12: Updating to include the png file.
+  const png = `assets/${index}.png`;
+  console.log(`DEBUG: in arweave upload, pngExt: ${png}`);
+  const fsStatPng = await stat(png);
+
+  // TODO CCDLE12: .png file to estimate size
   const estimatedManifestSize = estimateManifestSize([
     `${index}${imageExt}`,
+    `${index}.png`,
     'metadata.json',
   ]);
+
+  // TODO CCDLE12: Adding fsStatPng file size
   const storageCost = await fetchAssetCostToStore([
     fsStat.size,
+    fsStatPng.size,
     manifestBuffer.length,
     estimatedManifestSize,
   ]);
-  log.debug(`lamport cost to store ${image}: ${storageCost}`);
+  //log.debug(`lamport cost to store ${image}: ${storageCost}`);
+  console.log(`lamport cost to store ${image}: ${storageCost}`);
 
   const instructions = [
     anchor.web3.SystemProgram.transfer({
@@ -91,14 +104,24 @@ export async function arweaveUpload(
     [],
     'confirmed',
   );
-  log.debug(`solana transaction (${env}) for arweave payment:`, tx);
+  //log.debug(`solana transaction (${env}) for arweave payment:`, tx);
+  console.log(`solana transaction (${env}) for arweave payment:`, tx);
 
   const data = new FormData();
   data.append('transaction', tx['txid']);
   data.append('env', env);
+
+  // TODO CCDLE12: I think I need to upload the .png file here otherwise it won't make it on to arweave
   data.append('file[]', fs.createReadStream(image), {
     filename: `${index}${imageExt}`,
-    contentType: `image/${imageExt.replace('.', '')}`,
+    // TODO CCDLE12: Switched image to video
+    contentType: `video/${imageExt.replace('.', '')}`,
+  });
+
+  const pngExt = path.extname(png);
+  data.append('file[]', fs.createReadStream(png), {
+    filename: `${index}.png`,
+    contentType: `image/${pngExt.replace('.', '')}`,
   });
   data.append('file[]', manifestBuffer, 'metadata.json');
 

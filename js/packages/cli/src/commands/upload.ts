@@ -206,10 +206,26 @@ export async function uploadV2({
         async allIndexesInSlice => {
           for (let i = 0; i < allIndexesInSlice.length; i++) {
             const assetKey = dedupedAssetKeys[allIndexesInSlice[i]];
+
+            // TODO CCDLE12: Hardcode and create image file extension for .png and .mp4
+            // e.g. imagePng and imageMp4
+            //const imagePng = path.join(
+            //  dirname,
+            //  `${assetKey.index}.png`,
+            //);
+            //console.log(`DEBUG CCCDLE12: imagePng: ${imagePng}`);
+
+            //const imageMp4 = path.join(
+            //  dirname,
+            //  `${assetKey.index}.mp4`,
+            //);
+            //console.log(`DEBUG CCCDLE12: imageMp4: ${imageMp4}`);
+
             const image = path.join(
               dirname,
               `${assetKey.index}${assetKey.mediaExt}`,
             );
+
             const manifest = getAssetManifest(
               dirname,
               assetKey.index.includes('json')
@@ -291,12 +307,17 @@ export async function uploadV2({
               log.info(`Processing asset: ${allIndexesInSlice[i]}`);
             }
 
+            // TODO CCDLE12: Create x2 links and imageLink
+            // e.g. linkPng, imageLinkPng,
+            // +    linkMp4, imageLinkMp4,
             let link, imageLink;
             try {
+              // TODO CCDLE12: Comment out other storage types since we aren't going to use it.
               switch (storage) {
                 case StorageType.Ipfs:
                   [link, imageLink] = await ipfsUpload(
                     ipfsCredentials,
+                    //imagePng,
                     image,
                     manifestBuffer,
                   );
@@ -304,22 +325,26 @@ export async function uploadV2({
                 case StorageType.Aws:
                   [link, imageLink] = await awsUpload(
                     awsS3Bucket,
+                    //imagePng,
                     image,
                     manifestBuffer,
                   );
                   break;
                 case StorageType.Arweave:
                 default:
+                  // TODO: Call arweaveUpload x2, using imagePng and imageMp4
                   [link, imageLink] = await arweaveUpload(
                     walletKeyPair,
                     anchorProgram,
                     env,
+                    //imagePng,
                     image,
                     manifestBuffer,
                     manifest,
                     assetKey.index,
                   );
               }
+              // TODO: Call this x2 for linkPng and imagePng + linkMp4 and imageMp4
               if (link && imageLink) {
                 log.debug('Updating cache for ', allIndexesInSlice[i]);
                 cacheContent.items[assetKey.index] = {
@@ -388,7 +413,8 @@ export async function uploadV2({
                   saveCache(cacheName, env, cacheContent);
                 } catch (e) {
                   log.error(
-                    `saving config line ${ind}-${keys[indexes[indexes.length - 1]]
+                    `saving config line ${ind}-${
+                      keys[indexes[indexes.length - 1]]
                     } failed`,
                     e,
                   );
@@ -426,8 +452,12 @@ type Cache = {
  * This object holds the contents of the asset's JSON file.
  * Represented here in its minimal form.
  */
+// TODO CCDLE12: Trying to replace image with video here so that we can read the video file
+// from the JSON
+// TODO CCDLE12: UPDADTE, re-adding image back into manifest to also accept images
 type Manifest = {
   image: string;
+  animation_url: string;
   name: string;
   symbol: string;
   seller_fee_basis_points: number;
@@ -472,19 +502,46 @@ function getAssetKeysNeedingUpload(
     .sort((a, b) => Number.parseInt(a.key, 10) - Number.parseInt(b.key, 10));
 }
 
+// TODO CCDLE12: I think this is where the image was replaced with the video.
 /**
  * Returns a Manifest from a path and an assetKey
  * Replaces image.ext => index.ext
  */
 function getAssetManifest(dirname: string, assetKey: string): Manifest {
-  const assetIndex = assetKey.includes('.json') ? assetKey.substring(0, assetKey.length - 5) : assetKey;
-  const manifestPath = path.join(
-    dirname,
-    `${assetIndex}.json`,
+  const assetIndex = assetKey.includes('.json')
+    ? assetKey.substring(0, assetKey.length - 5)
+    : assetKey;
+  const manifestPath = path.join(dirname, `${assetIndex}.json`);
+  const manifest: Manifest = JSON.parse(
+    fs.readFileSync(manifestPath).toString(),
   );
-  const manifest: Manifest = JSON.parse(fs.readFileSync(manifestPath).toString());
+
+  console.log(`DEBUG: BEFORE REPLACE`);
+  console.log(`DEBUG: Asset Index: ${assetIndex}`);
+  console.log(`DEBUG: manifest path: ${manifestPath}`);
+  console.log(`DEBUG: manifest animation_url: ${manifest.animation_url}`);
+  console.log(`DEBUG: manifest image: ${manifest.image}`);
+
+  // TODO CCDLE12: I think this is what I replace to video from image?
+  // TODO CCDLE12: Update the manifest to allow images as well
   manifest.image = manifest.image.replace('image', assetIndex);
-  manifest.properties.files[0].uri = manifest.properties.files[0].uri.replace('image', assetIndex);
+  manifest.properties.files[0].uri = manifest.properties.files[0].uri.replace(
+    'image',
+    assetIndex,
+  );
+
+  // TODO: Animation URL is used to update the video contents.
+  manifest.animation_url = manifest.animation_url.replace(
+    'animation_url',
+    assetIndex,
+  );
+  manifest.properties.files[1].uri = manifest.properties.files[1].uri.replace(
+    'animation_url',
+    assetIndex,
+  );
+
+  console.log(`DEBUG: AFTER REPLACE`);
+
   return manifest;
 }
 
@@ -597,7 +654,8 @@ async function writeIndices({
                 saveCache(cacheName, env, cache);
               } catch (err) {
                 log.error(
-                  `Saving config line ${ind}-${keys[indexes[indexes.length - 1]]
+                  `Saving config line ${ind}-${
+                    keys[indexes[indexes.length - 1]]
                   } failed`,
                   err,
                 );
@@ -822,16 +880,16 @@ export async function upload({
     const config = cache.program.config
       ? new PublicKey(cache.program.config)
       : await initConfig(anchorProgram, walletKeyPair, {
-        totalNFTs,
-        mutable,
-        retainAuthority,
-        sellerFeeBasisPoints,
-        symbol,
-        creators,
-        env,
-        cache,
-        cacheName,
-      });
+          totalNFTs,
+          mutable,
+          retainAuthority,
+          sellerFeeBasisPoints,
+          symbol,
+          creators,
+          env,
+          cache,
+          cacheName,
+        });
 
     setAuthority(walletKeyPair.publicKey, cache, cacheName, env);
 

@@ -49,6 +49,8 @@ const supportedImageTypes = {
   'image/png': 1,
   'image/gif': 1,
   'image/jpeg': 1,
+  // TODO CCDLE12: Add this file type to enable mp4 files to be uploaded
+  'video/mp4': 1,
 };
 
 if (!fs.existsSync(CACHE_PATH)) {
@@ -151,29 +153,31 @@ programCommand('upload')
     });
     const imageFileCount = imageFiles.length;
 
+    // TODO CCDLE12: Here is where an error is thrown because a certain file type is not supported.
     imageFiles.forEach(it => {
       if (!supportedImageTypes[getType(it)]) {
         throw new Error(`The file ${it} is not a supported file type.`);
       }
     });
 
-    const jsonFileCount = files.filter(it => {
-      return it.endsWith(EXTENSION_JSON);
-    }).length;
+    //const jsonFileCount = files.filter(it => {
+    //  return it.endsWith(EXTENSION_JSON);
+    //}).length;
 
     const elemCount = number ? number : imageFileCount;
 
-    if (imageFileCount !== jsonFileCount) {
-      throw new Error(
-        `number of img files (${imageFileCount}) is different than the number of json files (${jsonFileCount})`,
-      );
-    }
+    // TODO CCDLE12: Editing this so that we can accept multiple files for one .json file e.g. .png and .mp4
+    //if (imageFileCount !== jsonFileCount) {
+    //  throw new Error(
+    //    `number of img files (${imageFileCount}) is different than the number of json files (${jsonFileCount})`,
+    //  );
+    // }
 
-    if (elemCount < imageFileCount) {
-      throw new Error(
-        `max number (${elemCount})cannot be smaller than the number of elements in the source folder (${imageFileCount})`,
-      );
-    }
+    //if (elemCount < imageFileCount) {
+    //  throw new Error(
+    //    `max number (${elemCount})cannot be smaller than the number of elements in the source folder (${imageFileCount})`,
+    //  );
+    // }
 
     log.info(`Beginning the upload for ${elemCount} (img+json) pairs`);
 

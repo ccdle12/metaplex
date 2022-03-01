@@ -266,6 +266,7 @@ const Home = (props: HomeProps) => {
         );
         setYourSOLBalance(balance);
 
+        console.log(`DEBUG: FAIRLAUNCH ID: ${props.fairLaunchId}`);
         if (props.fairLaunchId) {
           const state = await getFairLaunchState(
             anchorWallet,
